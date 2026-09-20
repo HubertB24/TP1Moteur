@@ -43,6 +43,14 @@ AAsteroidsShip::AAsteroidsShip()
 	ThrustInput = 0.f;
 	RotateInput = 0.f;
 	TimeSinceLastShot = 0.f;
+
+	InvulnerabilityDuration = 2.f;
+	bInvulnerable = false;
+	BlinkInterval = 0.12f;
+	BlinkTimer = 0.f;
+
+	MeshLeanYaw = 25.f;
+	MeshLeanInterpSpeed = 8.f;
 }
 
 void AAsteroidsShip::BeginPlay()
@@ -136,16 +144,57 @@ void AAsteroidsShip::Tick(float DeltaTime)
 
 	AddActorWorldOffset(Velocity * DeltaTime);
 	SetActorLocation(UAsteroidsUtils::WrapToPlayArea(GetActorLocation(), PlayAreaHalfExtents));
+
+	// Lean the mesh into turns: negative when rotating right, positive when rotating left.
+	const float TargetYaw = -RotateInput * MeshLeanYaw;
+	FRotator CurrentRelative = Mesh->GetRelativeRotation();
+	CurrentRelative.Yaw = FMath::FInterpTo(CurrentRelative.Yaw, TargetYaw, DeltaTime, MeshLeanInterpSpeed);
+	Mesh->SetRelativeRotation(CurrentRelative);
+
+	if (bInvulnerable)
+	{
+		BlinkTimer += DeltaTime;
+		if (BlinkTimer >= BlinkInterval)
+		{
+			BlinkTimer = 0.f;
+			Mesh->SetVisibility(!Mesh->IsVisible());
+		}
+	}
 }
 
 void AAsteroidsShip::OnOverlap(UPrimitiveComponent* /*OverlappedComp*/, AActor* OtherActor,
 	UPrimitiveComponent* /*OtherComp*/, int32 /*OtherBodyIndex*/,
 	bool /*bFromSweep*/, const FHitResult& /*SweepResult*/)
 {
+	if (bInvulnerable || !Cast<AAsteroid>(OtherActor))
+	{
+		return;
+	}
+
+	BeginInvulnerability();
+
 	if (AAsteroidsGameMode* GM = Cast<AAsteroidsGameMode>(UGameplayStatics::GetGameMode(this)))
 	{
 		GM->NotifyPlayerHit(this);
 	}
+}
+
+void AAsteroidsShip::BeginInvulnerability()
+{
+	bInvulnerable = true;
+	BlinkTimer = 0.f;
+
+	GetWorldTimerManager().SetTimer(
+		InvulnerabilityTimerHandle,
+		this, &AAsteroidsShip::EndInvulnerability,
+		InvulnerabilityDuration,
+		false);
+}
+
+void AAsteroidsShip::EndInvulnerability()
+{
+	bInvulnerable = false;
+	Mesh->SetVisibility(true);
 }
 
 void AAsteroidsShip::ResetShip()
@@ -154,4 +203,5 @@ void AAsteroidsShip::ResetShip()
 	ThrustInput = 0.f;
 	RotateInput = 0.f;
 	SetActorLocationAndRotation(FVector::ZeroVector, FRotator::ZeroRotator);
+	BeginInvulnerability();
 }

@@ -54,6 +54,14 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Movement")
 	float TurnRate;
 
+	/** Max yaw the mesh leans when turning. Negative = leans opposite to a "banking" convention; tune by eye. */
+	UPROPERTY(EditAnywhere, Category = "Movement")
+	float MeshLeanYaw;
+
+	/** How quickly the mesh's lean catches up to the target lean. Higher = snappier. */
+	UPROPERTY(EditAnywhere, Category = "Movement")
+	float MeshLeanInterpSpeed;
+
 	UPROPERTY(EditAnywhere, Category = "Play Area")
 	FVector2D PlayAreaHalfExtents;
 
@@ -63,6 +71,15 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Weapon")
 	float FireCooldown;
 
+	UPROPERTY(EditAnywhere, Category = "Ship")
+	float InvulnerabilityDuration;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Ship")
+	bool bInvulnerable;
+
+	UFUNCTION(BlueprintCallable, Category = "Ship")
+	void BeginInvulnerability();
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -71,6 +88,8 @@ protected:
 	void HandleRotate(const FInputActionValue& Value);
 	void HandleRotateEnd(const FInputActionValue& Value);
 	void HandleFire();
+
+	void EndInvulnerability();
 
 	UFUNCTION()
 	void OnOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
@@ -87,11 +106,19 @@ protected:
 	TObjectPtr<USceneComponent> MuzzleLocation;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Movement")
-
-
 	FVector Velocity;
 
+	FTimerHandle InvulnerabilityTimerHandle;
+
+	UPROPERTY(EditAnywhere, Category = "Ship")
+	float BlinkInterval;
+
+	float BlinkTimer;
+
 	float ThrustInput;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Movement")
 	float RotateInput;
+
 	float TimeSinceLastShot;
 };
